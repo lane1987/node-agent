@@ -1,9 +1,10 @@
 <?php
+namespace Swoole\NodeAgent;
 
-class SwooleUploadServer
+class Server
 {
     /**
-     * @var swoole_server
+     * @var \swoole_server
      */
     protected $serv;
     protected $files;
@@ -28,7 +29,7 @@ class SwooleUploadServer
         return true;
     }
 
-    function onReceive(swoole_server $serv, $fd, $from_id, $data)
+    function onReceive(\swoole_server $serv, $fd, $from_id, $data)
     {
         //传输尚未开始
         if (empty($this->files[$fd])) {
@@ -87,7 +88,7 @@ class SwooleUploadServer
         $this->max_file_size = (int)$max_file_size;
         if ($this->max_file_size <= 0)
         {
-            throw new Exception(__METHOD__.": max_file_size is zero.");
+            throw new \Exception(__METHOD__.": max_file_size is zero.");
         }
     }
 
@@ -99,7 +100,7 @@ class SwooleUploadServer
 
     function run()
     {
-        $serv = new swoole_server("0.0.0.0", 9507, SWOOLE_BASE);
+        $serv = new \swoole_server("0.0.0.0", 9507, SWOOLE_BASE);
         $runtime_config = array(
             'worker_num' => 1,
         );
