@@ -6,4 +6,5 @@ $svr = new Swoole\NodeAgent\Server;
 $svr->setRootPath('/tmp/');
 //设置允许上传的文件最大尺寸
 $svr->setMaxSize(100 * 1024 * 1024);
+$svr->setCenterServer('127.0.0.1', 9506);
 $svr->run();

@@ -9,76 +9,189 @@ class Server
     protected $serv;
     protected $files;
 
-    protected $root_path = '/tmp/';
-    protected $override = false;
-
+    protected $center_server;
     protected $max_file_size = 100000000; //100M
+
+    /**
+     * 限定上传文件的根目录
+     * @var string
+     */
+    protected $root_path;
 
     function onConnect($serv, $fd, $from_id)
     {
         echo "new upload client[$fd] connected.\n";
     }
 
-    protected function message($fd, $code, $msg)
+    /**
+     * 发送回应
+     * @param $fd
+     * @param $code
+     * @param $msg
+     * @return bool
+     */
+    protected function sendResult($fd, $code, $msg)
     {
-        $this->serv->send($fd, json_encode(array('code' => $code, 'msg' => $msg)));
-        echo "[-->$fd]\t$code\t$msg\n";
-        if ($code != 0) {
+        $_json = json_encode(array('code' => $code, 'msg' => $msg));
+        $this->serv->send($fd, pack('N', strlen($_json)) . $_json);
+        if (is_string($msg))
+        {
+            echo "[-->$fd]\t$code\t$msg\n";
+        }
+        if ($code != 0)
+        {
             $this->serv->close($fd);
         }
         return true;
     }
 
-    function onReceive(\swoole_server $serv, $fd, $from_id, $data)
+    /**
+     * 执行一段Shell脚本
+     * @param $fd
+     * @param $req
+     */
+    function _cmd_execute($fd, $req)
     {
-        //传输尚未开始
-        if (empty($this->files[$fd])) {
+        if (empty($req['shell_script']))
+        {
+            $this->sendResult($fd, 500, 'require shell_script.');
+            return;
+        }
+        $output = '';
+        exec($req['shell_script'], $output, $code);
+        if ($code == 0)
+        {
+            $this->sendResult($fd, 0, $output);
+        }
+        else
+        {
+            $this->sendResult($fd, 505, $output);
+        }
+    }
+
+    /**
+     * 删除文件
+     * @param $fd
+     * @param $req
+     * @return bool
+     */
+    function _cmd_delete($fd, $req)
+    {
+        if (empty($req['files']))
+        {
+            $this->sendResult($fd, 500, 'require files.');
+            return;
+        }
+        $delete_count = 0;
+        foreach ($req['files'] as $f)
+        {
+            if (is_file($f) and unlink($f))
+            {
+                $delete_count++;
+            }
+        }
+        $this->sendResult($fd, 0, 'delete '.$delete_count.' files.');
+    }
+
+    /**
+     * 上传文件指令
+     * @param $fd
+     * @param $req
+     * @return bool
+     */
+    protected function _cmd_upload($fd, $req)
+    {
+        if (empty($req['size']) or empty($req['file']))
+        {
+            return $this->sendResult($fd, 500, 'require dst_file and size.');
+        }
+        elseif ($req['size'] > $this->max_file_size)
+        {
+            return $this->sendResult($fd, 501, 'over the max_file_size. ' . $this->max_file_size);
+        }
+
+        $file = $req['file'];
+        if (strncmp($file, $this->root_path, strlen($this->root_path)) != 0)
+        {
+            return $this->sendResult($fd, 502, "file path[{$file}] error. Access deny.");
+        }
+        elseif (!$req['override'] and is_file($file))
+        {
+            return $this->sendResult($fd, 503, 'file is exists, no override');
+        }
+        $fp = fopen($file, 'w');
+        if (!$fp)
+        {
+            return $this->sendResult($fd, 504, "can open file[{$file}].");
+        }
+        else
+        {
+            $this->sendResult($fd, 0, 'transmission start');
+            $this->files[$fd] = array('fp' => $fp, 'file' => $file, 'size' => $req['size'], 'recv' => 0);
+        }
+    }
+
+    function onReceive(\swoole_server $serv, $fd, $from_id, $_data)
+    {
+        $data = substr($_data, 4);
+
+        //文件传输尚未开始
+        if (empty($this->files[$fd]))
+        {
             $req = json_decode($data, true);
-            if ($req === false) {
-                return $this->message($fd, 400, 'Error Request');
-            } elseif (empty($req['size']) or empty($req['name'])) {
-                return $this->message($fd, 500, 'require file name and size.');
-            } elseif ($req['size'] > $this->max_file_size) {
-                return $this->message($fd, 501, 'over the max_file_size. ' . $this->max_file_size);
+            if ($req === false or empty($req['cmd']))
+            {
+                $this->sendResult($fd, 400, 'Error Request');
+                return;
             }
-            $file = $this->root_path . '/' . $req['name'];
-            $dir = realpath(dirname($file));
-            if (!$dir or strncmp($dir, $this->root_path, strlen($this->root_path)) != 0) {
-                return $this->message($fd, 502, "file path[$dir] error. Access deny.");
-            } elseif ($this->override and is_file($file)) {
-                return $this->message($fd, 503, 'file exists. Server not allowed override');
+
+            $func = '_cmd_'.$req['cmd'];
+            if (is_callable([$this, $func]))
+            {
+                call_user_func([$this, $func], $fd, $req);
             }
-            $fp = fopen($file, 'w');
-            if (!$fp) {
-                return $this->message($fd, 504, 'can open file.');
-            } else {
-                $this->message($fd, 0, 'transmission start');
-                $this->files[$fd] = array('fp' => $fp, 'name' => $file, 'size' => $req['size'], 'recv' => 0);
+            else
+            {
+                $this->sendResult($fd, 404, 'Command Not Support.');
+                return;
             }
-        } //传输已建立
-        else {
-            $info = & $this->files[$fd];
+        }
+        //传输已建立
+        else
+        {
+            $info = &$this->files[$fd];
             $fp = $info['fp'];
-            $file = $info['name'];
-            if (!fwrite($fp, $data)) {
-                $this->message($fd, 600, "fwrite failed. transmission stop.");
+            $file = $info['file'];
+            if (!fwrite($fp, $data))
+            {
+                $this->sendResult($fd, 600, "fwrite failed. transmission stop.");
+                //关闭句柄
+                fclose($this->files[$fd]['fp']);
                 unlink($file);
-            } else {
+            }
+            else
+            {
                 $info['recv'] += strlen($data);
-                if ($info['recv'] >= $info['size']) {
-                    $this->message($fd, 0, "Success, transmission finish. Close connection.");
+                if ($info['recv'] >= $info['size'])
+                {
+                    $this->sendResult($fd, 0, "Success, transmission finish. Close connection.");
+                    //关闭句柄
+                    fclose($this->files[$fd]['fp']);
                     unset($this->files[$fd]);
+                }
+                else
+                {
+                    $this->sendResult($fd, 0,  "Success, continue.");
                 }
             }
         }
-        return true;
     }
 
     function setRootPath($path)
     {
         if (!is_dir($path))
         {
-            throw new Exception(__METHOD__.": $path is not exists.");
+            throw new \Exception(__METHOD__.": $path is not exists.");
         }
         $this->root_path = $path;
     }
@@ -92,6 +205,12 @@ class Server
         }
     }
 
+    function setCenterServer($ip, $port)
+    {
+        $this->center_server = new \swoole_client(SWOOLE_SOCK_UDP);
+        $this->center_server->connect($ip, $port);
+    }
+
     function onclose($serv, $fd, $from_id)
     {
         unset($this->files[$fd]);
@@ -101,8 +220,14 @@ class Server
     function run()
     {
         $serv = new \swoole_server("0.0.0.0", 9507, SWOOLE_BASE);
+
         $runtime_config = array(
             'worker_num' => 1,
+            'open_length_check' => true,
+            'package_length_type' => 'N',
+            'package_length_offset' => 0,       //第N个字节是包长度的值
+            'package_body_offset' => 4,       //第几个字节开始计算长度
+            'package_max_length' => 2000000,  //协议最大长度
         );
 
         global $argv;
@@ -111,9 +236,11 @@ class Server
             $runtime_config['daemonize'] = true;
         }
         $serv->set($runtime_config);
-        $serv->on('Start', function ($serv) {
-                echo "Swoole Upload Server running\n";
-            });
+        $serv->on('Start', function ($serv)
+        {
+            echo "Swoole Upload Server running\n";
+        });
+
         $this->root_path = rtrim($this->root_path, ' /');
         $serv->on('connect', array($this, 'onConnect'));
         $serv->on('receive', array($this, 'onreceive'));
