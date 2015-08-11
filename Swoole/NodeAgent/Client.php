@@ -1,20 +1,13 @@
 <?php
 namespace Swoole\NodeAgent;
 
-class Client
+class Client extends Base
 {
     /**
      * @var \swoole_client
      */
     protected $sock;
-
     public $errCode;
-
-
-    function __construct()
-    {
-
-    }
 
     function connect($host, $port, $timeout = 30)
     {
@@ -53,8 +46,8 @@ class Client
             'file' => $remote_file,
         ));
         //发送Header成功了，开始传输文件内容
-        //文件按照64K分片发送
-        if ($result['code'] ==0)
+        //文件按照8K分片发送
+        if ($result['code'] == 0)
         {
             $fp = fopen($local_file, 'r');
             if (!$fp)
@@ -67,12 +60,11 @@ class Client
                 $read = fread($fp, 8192);
                 if ($read !== false)
                 {
-                    $rs = $this->request($read, false);
-                    var_dump($rs);
                     //发送文件内容，JSON不需要串化
-                    if (!$rs)
+                    $rs = $this->sock->send($this->pack($read, false));
+                    if ($rs === false)
                     {
-                        echo "transmission failed. socket error code{$this->sock->errCode}\n";
+                        echo "transmission failed. socket error code {$this->sock->errCode}\n";
                         return false;
                     }
                 }
@@ -82,6 +74,10 @@ class Client
                 }
             }
             return true;
+        }
+        else
+        {
+            return false;
         }
     }
 
@@ -117,9 +113,9 @@ class Client
      * @param bool $json 是否进行JSON串化
      * @return bool|mixed
      */
-    protected function request($data, $json = true)
+    protected function request($data)
     {
-        $ret = $this->sock->send($this->pack($data, $json));
+        $ret = $this->sock->send($this->pack($data));
         if ($ret === false)
         {
             fail:
@@ -139,24 +135,5 @@ class Client
             return false;
         }
         return $json;
-    }
-
-    /**
-     * 数据打包
-     * @param $data
-     * @param bool $encode_json
-     * @return string
-     */
-    protected function pack($data, $encode_json = true)
-    {
-        if ($encode_json)
-        {
-            $_data = json_encode($data);
-        }
-        else
-        {
-            $_data = $data;
-        }
-        return pack('N', strlen($_data)) . $_data;
     }
 }

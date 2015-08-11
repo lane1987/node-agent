@@ -4,7 +4,9 @@
  * usage: php upload_client.php -h 127.0.0.1 -p 9507 -f test.jpg
  */
 require_once __DIR__ . '/Swoole/NodeAgent/Client.php';
-$client = new \Swoole\NodeAgent\Client();
+
+$encrypt_key = md5('5wbRnDYuMzdjYffs');
+$client = new \Swoole\NodeAgent\Client($encrypt_key);
 $args = getopt("p:h:f:t");
 
 if (empty($args['h']) or empty($args['f'])) 
@@ -38,10 +40,10 @@ if (!$client->connect($args['h'], $args['p'], $args['t']))
     die("\n");
 }
 
-//$remote_file = '/tmp/' . basename($file);
-//if (!$client->upload($file, $remote_file))
-//{
-//    die("upload success.\n");
-//}
+$remote_file = '/tmp/' . basename($file);
+if (!$client->upload($file, $remote_file))
+{
+    die("upload success.\n");
+}
 
 var_dump($client->delete(['/tmp/test1.txt', '/tmp/test2.txt']));

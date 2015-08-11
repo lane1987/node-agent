@@ -1,7 +1,7 @@
 <?php
 namespace Swoole\NodeAgent;
 
-class Server
+class Server extends Base
 {
     /**
      * @var \swoole_server
@@ -32,8 +32,8 @@ class Server
      */
     protected function sendResult($fd, $code, $msg)
     {
-        $_json = json_encode(array('code' => $code, 'msg' => $msg));
-        $this->serv->send($fd, pack('N', strlen($_json)) . $_json);
+        $_data = $this->pack(array('code' => $code, 'msg' => $msg));
+        $this->serv->send($fd, pack('N', strlen($_data)) . $_data);
         if (is_string($msg))
         {
             echo "[-->$fd]\t$code\t$msg\n";
@@ -55,6 +55,11 @@ class Server
         if (empty($req['shell_script']))
         {
             $this->sendResult($fd, 500, 'require shell_script.');
+            return;
+        }
+        if (!is_file($req['shell_script']))
+        {
+            $this->sendResult($fd, 404, 'shell_script ['.$req['shell_script'].'] is not exist.');
             return;
         }
         $output = '';
@@ -133,12 +138,10 @@ class Server
 
     function onReceive(\swoole_server $serv, $fd, $from_id, $_data)
     {
-        $data = substr($_data, 4);
-
         //文件传输尚未开始
         if (empty($this->files[$fd]))
         {
-            $req = json_decode($data, true);
+            $req = $this->unpack($_data);
             if ($req === false or empty($req['cmd']))
             {
                 $this->sendResult($fd, 400, 'Error Request');
@@ -159,13 +162,15 @@ class Server
         //传输已建立
         else
         {
+            //直接接收数据，不需要解析json
+            $data = $this->unpack($_data, false);
             $info = &$this->files[$fd];
             $fp = $info['fp'];
             $file = $info['file'];
             if (!fwrite($fp, $data))
             {
                 $this->sendResult($fd, 600, "fwrite failed. transmission stop.");
-                //关闭句柄
+                //关闭文件句柄
                 fclose($this->files[$fd]['fp']);
                 unlink($file);
             }
@@ -178,10 +183,6 @@ class Server
                     //关闭句柄
                     fclose($this->files[$fd]['fp']);
                     unset($this->files[$fd]);
-                }
-                else
-                {
-                    $this->sendResult($fd, 0,  "Success, continue.");
                 }
             }
         }
