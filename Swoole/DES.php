@@ -62,33 +62,18 @@ class DES
             default:
                 $this->mode = MCRYPT_MODE_CBC;
         }
+    }
 
+    function getIV()
+    {
         $source = PHP_OS == 'WINNT' ? MCRYPT_RAND : MCRYPT_DEV_RANDOM;
         $this->iv = mcrypt_create_iv(mcrypt_get_block_size($this->mcrypt, $this->mode), $source);
     }
 
-    /**
-     * 获取向量值
-     * @param string $code 向量值编码（base64/hex/bin）
-     * @return string 向量值
-     */
-    public function getIV($code = 'base64')
+    function setIV($iv)
     {
-        switch ($code)
-        {
-            case 'base64':
-                $ret = base64_encode($this->iv);
-                break;
-            case 'hex':
-                $ret = bin2hex($this->iv);
-                break;
-            case 'bin':
-            default:
-                $ret = $this->iv;
-        }
-        return $ret;
+        $this->iv = $iv;
     }
-
 
     /**
      * 加密
@@ -101,15 +86,7 @@ class DES
         {
             $str = $this->_pkcs5Pad($str);
         }
-        if (isset($this->iv))
-        {
-            $result = mcrypt_encrypt($this->mcrypt, $this->key, $str, $this->mode, $this->iv);
-        }
-        else
-        {
-            $result = mcrypt_encrypt($this->mcrypt, $this->key, $str, $this->mode);
-        }
-        return $result;
+        return mcrypt_encrypt($this->mcrypt, $this->key, base64_encode($str), $this->mode, $this->iv);
     }
 
     /**
@@ -119,20 +96,12 @@ class DES
      */
     public function decode($str)
     {
-        if (isset($this->iv))
-        {
-            $ret = mcrypt_decrypt($this->mcrypt, $this->key, $str, $this->mode, $this->iv);
-        }
-        else
-        {
-            $ret = mcrypt_decrypt($this->mcrypt, $this->key, $str, $this->mode);
-        }
+        $ret = mcrypt_decrypt($this->mcrypt, $this->key, $str, $this->mode, $this->iv);
         if ($this->mcrypt == MCRYPT_DES)
         {
             $ret = $this->_pkcs5Unpad($ret);
         }
-        $ret = trim($ret);
-        return $ret;
+        return base64_decode(rtrim($ret));
     }
 
     private function _pkcs5Pad($text)
@@ -154,12 +123,6 @@ class DES
             return false;
         }
         $ret = substr($text, 0, -1 * $pad);
-        return $ret;
-    }
-
-    private function _hex2bin($hex = false)
-    {
-        $ret = $hex !== false && preg_match('/^[0-9a-fA-F]+$/i', $hex) ? pack("H*", $hex) : false;
         return $ret;
     }
 }

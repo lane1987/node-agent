@@ -115,7 +115,8 @@ class Client extends Base
      */
     protected function request($data)
     {
-        $ret = $this->sock->send($this->pack($data));
+        $pkg = $this->pack($data);
+        $ret = $this->sock->send($pkg);
         if ($ret === false)
         {
             fail:
@@ -127,7 +128,7 @@ class Client extends Base
         {
             goto fail;
         }
-        $json = json_decode(substr($ret, 4), true);
+        $json = $this->unpack($ret);
         //服务器端返回的内容不正确
         if (!isset($json['code']))
         {

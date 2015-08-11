@@ -7,11 +7,13 @@ require_once dirname(__DIR__) . '/DES.php';
 
 class Base
 {
-    protected $encrypt;
+    protected $encrypt = false;
+    /**
+     * @var DES
+     */
     protected $des;
 
     /**
-     * @param bool $encrypt
      * @param string $des_key
      * @throws \Exception
      */
@@ -19,12 +21,9 @@ class Base
     {
         if (!empty($des_key))
         {
-            if (empty($des_key))
-            {
-                throw new \Exception("require des key.");
-            }
             $this->encrypt = true;
-            $this->des = new DES($des_key);
+            $this->des = new DES(substr($des_key, 0, 32));
+            $this->des->setIV(hex2bin(substr($des_key, 32)));
         }
     }
 
@@ -70,6 +69,7 @@ class Base
         if ($this->encrypt)
         {
             $_data = $this->des->decode($_data);
+
             if ($_data === false)
             {
                 return false;
