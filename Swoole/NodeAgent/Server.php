@@ -94,8 +94,49 @@ class Server extends Base
             {
                 $delete_count++;
             }
+            //目录直接删除
+            elseif (is_dir($f))
+            {
+                self::deleteDir($f);
+            }
         }
         $this->sendResult($fd, 0, 'delete '.$delete_count.' files.');
+    }
+
+    /**
+     * 递归删除目录
+     * @param $dir
+     * @return bool
+     */
+    static function deleteDir($dir)
+    {
+        //先删除目录下的文件：
+        $dh = opendir($dir);
+        while ($file = readdir($dh))
+        {
+            if ($file != "." && $file != "..")
+            {
+                $fullpath = $dir . "/" . $file;
+                if (!is_dir($fullpath))
+                {
+                    unlink($fullpath);
+                }
+                else
+                {
+                    self::deleteDir($fullpath);
+                }
+            }
+        }
+        closedir($dh);
+        //删除当前文件夹：
+        if (rmdir($dir))
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     /**
@@ -123,6 +164,12 @@ class Server extends Base
         elseif (!$req['override'] and is_file($file))
         {
             return $this->sendResult($fd, 503, 'file is exists, no override');
+        }
+        $dir = dirname($file);
+        //如果目录不存在，自动创建该目录
+        if (is_dir($dir))
+        {
+            mkdir($dir, 0777, true);
         }
         $fp = fopen($file, 'w');
         if (!$fp)

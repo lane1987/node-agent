@@ -42,6 +42,10 @@ if (!$client->connect($args['h'], $args['p'], $args['t']))
 }
 
 $remote_file = '/data/testnode/' . basename($file);
+$client->UploadCallback = function ($send_n, $total)
+{
+    echo "$send_n/$total\n";
+};
 if (!$client->upload($file, $remote_file))
 {
     die("upload success.\n");

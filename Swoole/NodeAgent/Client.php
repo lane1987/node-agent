@@ -4,6 +4,12 @@ namespace Swoole\NodeAgent;
 class Client extends Base
 {
     /**
+     * 上传回调函数
+     * @var callable
+     */
+    public $UploadCallback;
+
+    /**
      * @var \swoole_client
      */
     protected $sock;
@@ -39,9 +45,10 @@ class Client extends Base
      */
     function upload($local_file, $remote_file, $override = true)
     {
+        $file_size = filesize($local_file);
         $result = $this->request(array(
             'cmd' => 'upload',
-            'size' => filesize($local_file),
+            'size' => $file_size,
             'override' => $override,
             'file' => $remote_file,
         ));
@@ -55,7 +62,10 @@ class Client extends Base
                 echo "Error: open $local_file failed.\n";
                 return false;
             }
-            while(!feof($fp))
+
+            //当前发送的数据长度
+            $send_n = 0;
+            while (!feof($fp))
             {
                 $read = fread($fp, 8192);
                 if ($read !== false)
@@ -66,6 +76,11 @@ class Client extends Base
                     {
                         echo "transmission failed. socket error code {$this->sock->errCode}\n";
                         return false;
+                    }
+                    if ($this->UploadCallback)
+                    {
+                        $send_n += strlen($read);
+                        call_user_func([$this, 'UploadCallback'], $send_n, $file_size);
                     }
                 }
                 else
