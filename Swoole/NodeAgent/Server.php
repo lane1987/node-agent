@@ -1,6 +1,8 @@
 <?php
 namespace Swoole\NodeAgent;
 
+use Swoole;
+
 class Server extends Base
 {
     /**
@@ -13,10 +15,24 @@ class Server extends Base
     protected $max_file_size = 100000000; //100M
 
     /**
-     * 限定上传文件的根目录
+     * 限定上传文件的可以操作的目录
+     * @var array
+     */
+    protected $allowPathList = array();
+
+    /**
+     * 限定可执行文件的路径
      * @var string
      */
-    protected $root_path;
+    protected $script_path = '/data/script';
+
+    /**
+     * @param string $script_path
+     */
+    public function setScriptPath($script_path)
+    {
+        $this->script_path = $script_path;
+    }
 
     function onConnect($serv, $fd, $from_id)
     {
@@ -57,13 +73,21 @@ class Server extends Base
             $this->sendResult($fd, 500, 'require shell_script.');
             return;
         }
-        if (!is_file($req['shell_script']))
+
+        $script_file = realpath($this->script_path . $req['shell_script']);
+        //只允许执行指定目录的脚本
+        if (!$script_file or Swoole\String::startWith($script_file, $this->script_path) === false)
+        {
+            $this->sendResult($fd, 403, 'Permission denied.');
+            return;
+        }
+        if (!is_file($script_file))
         {
             $this->sendResult($fd, 404, 'shell_script ['.$req['shell_script'].'] is not exist.');
             return;
         }
         $output = '';
-        exec($req['shell_script'], $output, $code);
+        exec($script_file, $output, $code);
         if ($code == 0)
         {
             $this->sendResult($fd, 0, $output);
@@ -72,6 +96,24 @@ class Server extends Base
         {
             $this->sendResult($fd, 505, $output);
         }
+    }
+
+    /**
+     * 检查是否可以访问
+     */
+    function isAccess($file)
+    {
+        //替换掉危险的路径字符
+        $file = str_replace(['..', '~'], '', $file);
+        foreach ($this->allowPathList as $path)
+        {
+            //是否在允许的路径内
+            if (Swoole\String::startWith($file, $path) === false)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -157,11 +199,12 @@ class Server extends Base
         }
 
         $file = $req['file'];
-        if (strncmp($file, $this->root_path, strlen($this->root_path)) != 0)
+        if ($this->isAccess($file) === false)
         {
             return $this->sendResult($fd, 502, "file path[{$file}] error. Access deny.");
         }
-        elseif (!$req['override'] and is_file($file))
+
+        if (!$req['override'] and is_file($file))
         {
             return $this->sendResult($fd, 503, 'file is exists, no override');
         }
@@ -235,13 +278,21 @@ class Server extends Base
         }
     }
 
-    function setRootPath($path)
+    /**
+     * 设置允许上传的目录
+     * @param $pathlist
+     * @throws \Exception
+     */
+    function setRootPath($pathlist)
     {
-        if (!is_dir($path))
+        foreach ($pathlist as $_p)
         {
-            throw new \Exception(__METHOD__.": $path is not exists.");
+            if (!is_dir($_p))
+            {
+                throw new \Exception(__METHOD__ . ": $_p is not exists.");
+            }
         }
-        $this->root_path = $path;
+        $this->allowPathList[] = $pathlist;
     }
 
     function setMaxSize($max_file_size)
@@ -289,7 +340,7 @@ class Server extends Base
             echo "Swoole Upload Server running\n";
         });
 
-        $this->root_path = rtrim($this->root_path, ' /');
+        $this->allowPathList = rtrim($this->allowPathList, ' /');
         $serv->on('connect', array($this, 'onConnect'));
         $serv->on('receive', array($this, 'onreceive'));
         $serv->on('close', array($this, 'onclose'));
