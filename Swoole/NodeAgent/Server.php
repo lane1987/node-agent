@@ -48,8 +48,7 @@ class Server extends Base
      */
     protected function sendResult($fd, $code, $msg)
     {
-        $_data = $this->pack(array('code' => $code, 'msg' => $msg));
-        $this->serv->send($fd, pack('N', strlen($_data)) . $_data);
+        $this->serv->send($fd, $this->pack(array('code' => $code, 'msg' => $msg)));
         if (is_string($msg))
         {
             echo "[-->$fd]\t$code\t$msg\n";
@@ -74,19 +73,21 @@ class Server extends Base
             return;
         }
 
-        $script_file = realpath($this->script_path . $req['shell_script']);
+        //文件不存在
+        $script_file = realpath($this->script_path . '/' . $req['shell_script']);
+        if ($script_file === false)
+        {
+            $this->sendResult($fd, 404, 'shell_script ['.$this->script_path . '/' . $req['shell_script'].'] not found.');
+            return;
+        }
         //只允许执行指定目录的脚本
-        if (!$script_file or Swoole\String::startWith($script_file, $this->script_path) === false)
+        if (Swoole\String::startWith($script_file, $this->script_path) === false)
         {
             $this->sendResult($fd, 403, 'Permission denied.');
             return;
         }
-        if (!is_file($script_file))
-        {
-            $this->sendResult($fd, 404, 'shell_script ['.$req['shell_script'].'] is not exist.');
-            return;
-        }
         $output = '';
+        $code = 0;
         exec($script_file, $output, $code);
         if ($code == 0)
         {
@@ -203,7 +204,6 @@ class Server extends Base
         {
             return $this->sendResult($fd, 502, "file path[{$file}] error. Access deny.");
         }
-
         if (!$req['override'] and is_file($file))
         {
             return $this->sendResult($fd, 503, 'file is exists, no override');
@@ -223,6 +223,44 @@ class Server extends Base
         {
             $this->sendResult($fd, 0, 'transmission start');
             $this->files[$fd] = array('fp' => $fp, 'file' => $file, 'size' => $req['size'], 'recv' => 0);
+        }
+        return true;
+    }
+
+    /**
+     * 传输文件
+     * @param $fd
+     * @param $_data
+     */
+    protected function transportFile($fd, $_data)
+    {
+        //直接接收数据，不需要解析json
+        $data = $this->unpack($_data, false);
+        $info = &$this->files[$fd];
+        $fp = $info['fp'];
+        $file = $info['file'];
+        if (!fwrite($fp, $data))
+        {
+            $this->sendResult($fd, 600, "fwrite failed. transmission stop.");
+            //关闭文件句柄
+            fclose($this->files[$fd]['fp']);
+            unlink($file);
+        }
+        else
+        {
+            $info['recv'] += strlen($data);
+            if ($info['recv'] >= $info['size'])
+            {
+                $this->sendResult($fd, 0, "Success, transmission finish. Close connection.");
+                //关闭句柄
+                fclose($this->files[$fd]['fp']);
+                unset($this->files[$fd]);
+            }
+        }
+        //上传到脚本目录，自动增加执行权限
+        if (Swoole\String::startWith($file, $this->script_path))
+        {
+            chmod($file, 0777);
         }
     }
 
@@ -252,29 +290,7 @@ class Server extends Base
         //传输已建立
         else
         {
-            //直接接收数据，不需要解析json
-            $data = $this->unpack($_data, false);
-            $info = &$this->files[$fd];
-            $fp = $info['fp'];
-            $file = $info['file'];
-            if (!fwrite($fp, $data))
-            {
-                $this->sendResult($fd, 600, "fwrite failed. transmission stop.");
-                //关闭文件句柄
-                fclose($this->files[$fd]['fp']);
-                unlink($file);
-            }
-            else
-            {
-                $info['recv'] += strlen($data);
-                if ($info['recv'] >= $info['size'])
-                {
-                    $this->sendResult($fd, 0, "Success, transmission finish. Close connection.");
-                    //关闭句柄
-                    fclose($this->files[$fd]['fp']);
-                    unset($this->files[$fd]);
-                }
-            }
+            $this->transportFile($fd, $_data);
         }
     }
 

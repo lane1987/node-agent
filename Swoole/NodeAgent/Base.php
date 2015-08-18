@@ -23,7 +23,7 @@ class Base
         {
             $this->encrypt = true;
             $this->des = new DES(substr($des_key, 0, 32));
-            $this->des->setIV(hex2bin(substr($des_key, 32)));
+            $this->des->setIV(hex2bin(substr($des_key, 32, 64)));
         }
     }
 
@@ -69,7 +69,6 @@ class Base
         if ($this->encrypt)
         {
             $_data = $this->des->decode($_data);
-
             if ($_data === false)
             {
                 return false;

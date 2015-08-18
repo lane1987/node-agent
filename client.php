@@ -50,4 +50,8 @@ if (!$client->upload($file, $remote_file))
 {
     die("upload success.\n");
 }
+
+
+var_dump($client->execute('test.sh'), $client->errCode);
+
 //var_dump($client->delete(['/tmp/test1.txt', '/tmp/test2.txt']));

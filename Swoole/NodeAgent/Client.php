@@ -88,6 +88,16 @@ class Client extends Base
                     echo "Error: read $local_file failed.\n";
                 }
             }
+            $ret = $this->sock->recv();
+            if (!$ret)
+            {
+                return false;
+            }
+            $json = $this->unpack($ret);
+            if (!$json or !isset($json['code']))
+            {
+                return false;
+            }
             return true;
         }
         else
