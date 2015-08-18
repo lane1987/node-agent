@@ -49,10 +49,12 @@ class Server extends Base
     protected function sendResult($fd, $code, $msg)
     {
         $this->serv->send($fd, $this->pack(array('code' => $code, 'msg' => $msg)));
-        if (is_string($msg))
+        //打印日志
+        if (is_string($msg) and strlen($msg) < 128)
         {
             echo "[-->$fd]\t$code\t$msg\n";
         }
+        //错误时自动关闭连接
         if ($code != 0)
         {
             $this->serv->close($fd);
@@ -86,17 +88,7 @@ class Server extends Base
             $this->sendResult($fd, 403, 'Permission denied.');
             return;
         }
-        $output = '';
-        $code = 0;
-        exec($script_file, $output, $code);
-        if ($code == 0)
-        {
-            $this->sendResult($fd, 0, $output);
-        }
-        else
-        {
-            $this->sendResult($fd, 505, $output);
-        }
+        $this->sendResult($fd, 0, shell_exec($script_file));
     }
 
     /**
