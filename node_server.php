@@ -13,4 +13,3 @@ $svr->setScriptPath('/data/script');
 $svr->setMaxSize(100 * 1024 * 1024);
 $svr->setCenterServer('127.0.0.1', 9506);
 $svr->run();
-

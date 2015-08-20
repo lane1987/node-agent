@@ -16,6 +16,11 @@ class Server extends Base
     protected $max_file_size = 100000000; //100M
 
     /**
+     * 版本号
+     */
+    const VERSION = '1.0.0';
+
+    /**
      * 限定上传文件的可以操作的目录
      * @var array
      */
@@ -38,6 +43,8 @@ class Server extends Base
     function onConnect($serv, $fd, $from_id)
     {
         echo "new upload client[$fd] connected.\n";
+        //清理stat缓存
+        clearstatcache();
     }
 
     /**
@@ -75,11 +82,13 @@ class Server extends Base
             $this->sendResult($fd, 500, 'require shell_script.');
             return;
         }
+        //清理stat缓存
+        clearstatcache();
         //文件不存在
         $script_file = realpath($this->script_path . '/' . $req['shell_script']);
-        if ($script_file === false)
+        if ($script_file === false or !is_file($script_file))
         {
-            $this->sendResult($fd, 404, 'shell_script ['.$this->script_path . '/' . $req['shell_script'].'] not found.');
+            $this->sendResult($fd, 404, 'shell_script [' . $this->script_path . '/' . $req['shell_script'] . '] not found.');
             return;
         }
 
@@ -246,7 +255,7 @@ class Server extends Base
         }
         $dir = dirname($file);
         //如果目录不存在，自动创建该目录
-        if (is_dir($dir))
+        if (!is_dir($dir))
         {
             mkdir($dir, 0777, true);
         }
