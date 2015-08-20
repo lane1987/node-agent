@@ -46,6 +46,11 @@ class Client extends Base
     function upload($local_file, $remote_file, $override = true)
     {
         $file_size = filesize($local_file);
+        //读取文件信息失败或者空文件
+        if (empty($file_size))
+        {
+            return false;
+        }
         $result = $this->request(array(
             'cmd' => 'upload',
             'size' => $file_size,
@@ -104,6 +109,21 @@ class Client extends Base
         {
             return false;
         }
+    }
+
+    /**
+     * 创建文件或者目录
+     * @param $path
+     * @param bool $isdir
+     * @return bool|mixed
+     */
+    function create($path, $isdir = false)
+    {
+        return $this->request([
+            'cmd' => 'create',
+            'path' => $path,
+            'isdir' => $isdir,
+        ]);
     }
 
     /**

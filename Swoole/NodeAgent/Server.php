@@ -74,7 +74,6 @@ class Server extends Base
             $this->sendResult($fd, 500, 'require shell_script.');
             return;
         }
-
         //文件不存在
         $script_file = realpath($this->script_path . '/' . $req['shell_script']);
         if ($script_file === false)
@@ -88,7 +87,8 @@ class Server extends Base
             $this->sendResult($fd, 403, 'Permission denied.');
             return;
         }
-        $this->sendResult($fd, 0, shell_exec($script_file));
+        $args = empty($req['args']) ? '' : implode(' ', $req['args']);
+        $this->sendResult($fd, 0, shell_exec($script_file . ' ' . $args));
     }
 
     /**
@@ -175,6 +175,48 @@ class Server extends Base
     }
 
     /**
+     * 创建文件或者目录
+     * @param $fd
+     * @param $req
+     * @return bool
+     */
+    protected function _cmd_create($fd, $req)
+    {
+        if (empty($req['path']) or empty($req['isdir']))
+        {
+            return $this->sendResult($fd, 500, 'require path and isdir.');
+        }
+        if ($this->isAccess($req['path']) === false)
+        {
+            return $this->sendResult($fd, 502, "file path[{$req['path']}] error. Access deny.");
+        }
+        if ($req['isdir'])
+        {
+            //目录已经存在，直接返回成功
+            if (is_dir($req['path']))
+            {
+                return $this->sendResult($fd, 0, "dir is exist.");
+            }
+            $res = mkdir($req['isdir'], 0777, true);
+        }
+        else
+        {
+            $dir = dirname($req['path']);
+            mkdir($dir, 0777, true);
+            //空文件
+            $res = file_put_contents($req['path'], '');
+        }
+        if ($res)
+        {
+            return $this->sendResult($fd, 0, "create success.");
+        }
+        else
+        {
+            return $this->sendResult($fd, 503, "create failed.");
+        }
+    }
+
+    /**
      * 上传文件指令
      * @param $fd
      * @param $req
@@ -204,7 +246,7 @@ class Server extends Base
         //如果目录不存在，自动创建该目录
         if (is_dir($dir))
         {
-            mkdir($dir, 0777, true);
+            mkdir($dir, 0700, true);
         }
         $fp = fopen($file, 'w');
         if (!$fp)
