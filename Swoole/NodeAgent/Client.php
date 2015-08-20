@@ -143,13 +143,15 @@ class Client extends Base
     /**
      * 删除一些文件
      * @param string $shell_script
+     * @param array $args
      * @return array
      */
-    function execute($shell_script)
+    function execute($shell_script, $args = array())
     {
         return $this->request([
             'cmd' => 'execute',
             'shell_script' => $shell_script,
+            'args' => $args,
         ]);
     }
 
