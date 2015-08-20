@@ -10,6 +10,7 @@ class Server extends Base
      */
     protected $serv;
     protected $files;
+    protected $currentCommand;
 
     protected $center_server;
     protected $max_file_size = 100000000; //100M
@@ -52,13 +53,13 @@ class Server extends Base
         //打印日志
         if (is_string($msg) and strlen($msg) < 128)
         {
-            echo "[-->$fd]\t$code\t$msg\n";
+            echo "[-->$fd]\t{$this->currentCommand}\t$code\t$msg\n";
         }
-        //错误时自动关闭连接
-        if ($code != 0)
-        {
-            $this->serv->close($fd);
-        }
+//        //错误时自动关闭连接
+//        if ($code != 0)
+//        {
+//            $this->serv->close($fd);
+//        }
         return true;
     }
 
@@ -81,8 +82,9 @@ class Server extends Base
             $this->sendResult($fd, 404, 'shell_script ['.$this->script_path . '/' . $req['shell_script'].'] not found.');
             return;
         }
+
         //只允许执行指定目录的脚本
-        if (Swoole\String::startWith($script_file, $this->script_path) === false)
+        if ((new Swoole\String($script_file))->startWith($this->script_path) === false)
         {
             $this->sendResult($fd, 403, 'Permission denied.');
             return;
@@ -101,7 +103,7 @@ class Server extends Base
         foreach ($this->allowPathList as $path)
         {
             //是否在允许的路径内
-            if (Swoole\String::startWith($file, $path) === false)
+            if ((new Swoole\String($file))->startWith($file, $path) === false)
             {
                 return false;
             }
@@ -246,7 +248,7 @@ class Server extends Base
         //如果目录不存在，自动创建该目录
         if (is_dir($dir))
         {
-            mkdir($dir, 0700, true);
+            mkdir($dir, 0777, true);
         }
         $fp = fopen($file, 'w');
         if (!$fp)
@@ -292,9 +294,13 @@ class Server extends Base
             }
         }
         //上传到脚本目录，自动增加执行权限
-        if (Swoole\String::startWith($file, $this->script_path))
+        if ((new Swoole\String($file))->startWith($this->script_path))
         {
-            chmod($file, 0777);
+            chmod($file, 0700);
+        }
+        else
+        {
+            chmod($file, 0666);
         }
     }
 
@@ -311,6 +317,7 @@ class Server extends Base
             }
 
             $func = '_cmd_'.$req['cmd'];
+            $this->currentCommand = $req['cmd'];
             if (is_callable([$this, $func]))
             {
                 call_user_func([$this, $func], $fd, $req);
