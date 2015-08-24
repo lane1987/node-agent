@@ -82,10 +82,11 @@ class Client extends Base
                         echo "transmission failed. socket error code {$this->sock->errCode}\n";
                         return false;
                     }
+                    //回调函数
                     if ($this->UploadCallback)
                     {
                         $send_n += strlen($read);
-                        call_user_func([$this, 'UploadCallback'], $send_n, $file_size);
+                        call_user_func($this->UploadCallback, $send_n, $file_size);
                     }
                 }
                 else
