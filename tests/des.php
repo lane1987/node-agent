@@ -1,7 +1,8 @@
 <?php
-require_once __DIR__ . '/Swoole/NodeAgent/Base.php';
-$encrypt_key = md5('5wbRnDYuMzdjYffs');
-echo $encrypt_key;exit;
+require_once dirname(__DIR__) . '/src/NodeAgent/Base.php';
+$encrypt_key = md5(uniqid('encrypt'));
+echo $encrypt_key;
+exit;
 
 //$des = new \Swoole\DES($encrypt_key);
 //
