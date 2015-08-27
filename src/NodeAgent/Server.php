@@ -317,7 +317,6 @@ abstract class Server extends Base
         }
     }
 
-    abstract function onPacket($serv, $data, $addr);
     abstract function init();
 
     function onReceive(\swoole_server $serv, $fd, $from_id, $_data)
@@ -412,16 +411,9 @@ abstract class Server extends Base
             $runtime_config['daemonize'] = true;
         }
         $serv->set($runtime_config);
-        $serv->on('Start', function ($serv)
-        {
-            echo "Swoole Upload Server running\n";
-        });
-
         $this->init();
-
         $serv->on('connect', array($this, 'onConnect'));
         $serv->on('receive', array($this, 'onReceive'));
-        $serv->on('packet', array($this, 'onPacket'));
         $serv->on('close', array($this, 'onClose'));
         $serv->start();
     }

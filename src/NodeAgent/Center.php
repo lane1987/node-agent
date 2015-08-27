@@ -10,7 +10,7 @@ class Center extends Server
     /**
      * @var \redis
      */
-    protected $redis;
+    public $redis;
     protected $nodes = array();
 
     /**
@@ -25,14 +25,20 @@ class Center extends Server
      */
     protected $ipMap = array();
 
+    const KEY_NODE_LIST = 'node:list';
+    const KEY_NODE_INFO = 'node:info';
+
     function init()
     {
         $this->redis = \Swoole::$php->redis;
-        $nodeSet = $this->redis->sMembers('nodes');
-        $this->nodes = array_flip($nodeSet);
+        $nodeList = $this->redis->sMembers(self::KEY_NODE_LIST);
+        $this->nodes = array_flip($nodeList);
         //监听UDP端口，接受来自于节点的上报
         $this->serv->addlistener('0.0.0.0', self::PORT_UDP, SWOOLE_SOCK_UDP);
+        $this->serv->on('packet', array($this, 'onPacket'));
         NodeInfo::$serv = $this->serv;
+        NodeInfo::$center = $this;
+        $this->log(__CLASS__.' is running.');
     }
 
     function onPacket($serv, $data, $addr)
@@ -56,6 +62,8 @@ class Center extends Server
                 $nodeInfo->address = $ipAddress;
                 $nodeInfo->port = $addr['port'];
                 $this->ipMap[$ipAddress] = $nodeInfo;
+                $this->log("new node, address=$ipAddress");
+                $this->redis->sAdd(self::KEY_NODE_LIST, $nodeInfo->hostname);
             }
             else
             {
@@ -107,6 +115,11 @@ class NodeInfo
      * @var \swoole_server
      */
     static $serv;
+
+    /**
+     * @var Center
+     */
+    static $center;
     /**
      * 机器hostname
      */
@@ -147,6 +160,7 @@ class NodeInfo
         $this->hostname = $info['hostname'];
         $this->uanme = $info['uanme'];
         $this->deviceInfo = $info['deviceInfo'];
+        self::$center->redis->hMset(Center::KEY_NODE_INFO . ':' . $this->hostname, $info);
     }
 
     /**

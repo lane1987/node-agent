@@ -22,7 +22,9 @@ class Node extends Server
         {
             //每1分钟向服务器上报
             $serv->tick(60000, [$this, 'onTimer']);
+            swoole_event_add($this->centerSocket->sock, [$this, 'onPacket']);
         });
+        $this->log(__CLASS__.' is running.');
     }
 
     function setCenterSocket($ip, $port)
@@ -33,13 +35,9 @@ class Node extends Server
         $this->centerPort = $port;
     }
 
-    function onPacket($serv, $data, $addr)
+    function onPacket($sock)
     {
-        if ($addr['address'] != $this->centerHost)
-        {
-            $this->log("{$addr['address']} is not center server host.");
-        }
-
+        $data = $this->centerSocket->recv();
         $req = unserialize($data);
         if (empty($req['cmd']))
         {
@@ -51,10 +49,13 @@ class Node extends Server
             $this->centerSocket->send(serialize([
                 //心跳
                 'cmd' => 'putInfo',
-                //机器HOSTNAME
-                'name' => gethostname(),
-                'ip' => swoole_get_local_ip(),
-                'uname' => php_uname(),
+                'info' => [
+                    //机器HOSTNAME
+                    'hostname' => gethostname(),
+                    'ipList' => swoole_get_local_ip(),
+                    'uname' => php_uname(),
+                    'deviceInfo' => '',
+                ],
             ]));
         }
     }
