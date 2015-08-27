@@ -3,8 +3,11 @@ namespace NodeAgent;
 
 use Swoole;
 
-class Server extends Base
+abstract class Server extends Base
 {
+    const PORT_UDP   = 9508;
+    const PORT_TCP   = 9507;
+
     /**
      * @var \swoole_server
      */
@@ -12,16 +15,12 @@ class Server extends Base
     protected $files;
     protected $currentCommand;
 
-    /**
-     * @var \swoole_client
-     */
-    protected $center_server;
     protected $max_file_size = 100000000; //100M
 
     /**
      * 版本号
      */
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.1';
 
     /**
      * 限定上传文件的可以操作的目录
@@ -149,7 +148,7 @@ class Server extends Base
                 self::deleteDir($f);
             }
         }
-        $this->sendResult($fd, 0, 'delete '.$delete_count.' files.');
+        $this->sendResult($fd, 0, 'delete ' . $delete_count . ' files.');
     }
 
     /**
@@ -316,6 +315,9 @@ class Server extends Base
         }
     }
 
+    abstract function onPacket($serv, $data, $addr);
+    abstract function init();
+
     function onReceive(\swoole_server $serv, $fd, $from_id, $_data)
     {
         //文件传输尚未开始
@@ -328,7 +330,7 @@ class Server extends Base
                 return;
             }
 
-            $func = '_cmd_'.$req['cmd'];
+            $func = '_cmd_' . $req['cmd'];
             $this->currentCommand = $req['cmd'];
             if (is_callable([$this, $func]))
             {
@@ -369,14 +371,8 @@ class Server extends Base
         $this->max_file_size = (int)$max_file_size;
         if ($this->max_file_size <= 0)
         {
-            throw new \Exception(__METHOD__.": max_file_size is zero.");
+            throw new \Exception(__METHOD__ . ": max_file_size is zero.");
         }
-    }
-
-    function setCenterServer($ip, $port)
-    {
-        $this->center_server = new \swoole_client(SWOOLE_SOCK_UDP);
-        $this->center_server->connect($ip, $port);
     }
 
     function onclose($serv, $fd, $from_id)
@@ -388,6 +384,7 @@ class Server extends Base
     function run()
     {
         $serv = new \swoole_server("0.0.0.0", 9507, SWOOLE_BASE);
+        $this->serv = $serv;
 
         $runtime_config = array(
             'worker_num' => 1,
@@ -409,31 +406,12 @@ class Server extends Base
             echo "Swoole Upload Server running\n";
         });
 
-        $serv->on('WorkerStart', function (\swoole_server $serv, $worker_id)
-        {
-            //每1分钟向服务器上报
-            $serv->tick(60000, [$this, 'onTimer']);
-        });
+        $this->init();
 
-        //监听UDP端口，与Center服务器通信
-        $serv->listen('0.0.0.0', 9508, SWOOLE_SOCK_UDP);
         $serv->on('connect', array($this, 'onConnect'));
         $serv->on('receive', array($this, 'onReceive'));
         $serv->on('packet', array($this, 'onPacket'));
         $serv->on('close', array($this, 'onClose'));
-        $this->serv = $serv;
         $serv->start();
-    }
-
-    function onTimer($id)
-    {
-        $this->center_server->send(serialize([
-            //心跳
-            'cmd' => 'heartbeat',
-            //机器HOSTNAME
-            'name' => gethostname(),
-            'ip' => swoole_get_local_ip(),
-            'uname' => php_uname(),
-        ]));
     }
 }
