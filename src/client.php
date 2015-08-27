@@ -3,11 +3,11 @@
 /**
  * usage: php upload_client.php -h 127.0.0.1 -p 9507 -f test.jpg
  */
-require_once __DIR__ . '/Swoole/NodeAgent/Base.php';
-require_once __DIR__ . '/Swoole/NodeAgent/Client.php';
+require_once __DIR__ . '/NodeAgent/Base.php';
+require_once __DIR__ . '/NodeAgent/Client.php';
 
 $encrypt_key = file_get_contents(__DIR__.'/encrypt.key');
-$client = new \Swoole\NodeAgent\Client($encrypt_key);
+$client = new NodeAgent\Client($encrypt_key);
 $args = getopt("p:h:f:t");
 
 if (empty($args['h']) or empty($args['f'])) 

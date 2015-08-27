@@ -1,5 +1,5 @@
 <?php
-namespace Swoole;
+namespace NodeAgent;
 
 /**
  * 对称加密算法类

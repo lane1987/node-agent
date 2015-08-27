@@ -1,5 +1,5 @@
 <?php
-namespace Swoole\NodeAgent;
+namespace NodeAgent;
 
 use Swoole;
 
@@ -417,8 +417,6 @@ class Server extends Base
 
         //监听UDP端口，与Center服务器通信
         $serv->listen('0.0.0.0', 9508, SWOOLE_SOCK_UDP);
-
-        $this->allowPathList = rtrim($this->allowPathList, ' /');
         $serv->on('connect', array($this, 'onConnect'));
         $serv->on('receive', array($this, 'onReceive'));
         $serv->on('packet', array($this, 'onPacket'));

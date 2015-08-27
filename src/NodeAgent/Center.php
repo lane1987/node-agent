@@ -1,5 +1,5 @@
 <?php
-namespace Swoole\NodeAgent;
+namespace NodeAgent;
 
 use Swoole;
 

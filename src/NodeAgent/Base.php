@@ -1,9 +1,7 @@
 <?php
-namespace Swoole\NodeAgent;
+namespace NodeAgent;
 
-use Swoole\DES;
-
-require_once dirname(__DIR__) . '/DES.php';
+require_once __DIR__ . '/DES.php';
 
 class Base
 {
