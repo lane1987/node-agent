@@ -39,6 +39,24 @@ class Node extends Server
         {
             $this->log("{$addr['address']} is not center server host.");
         }
+
+        $req = unserialize($data);
+        if (empty($req['cmd']))
+        {
+            $this->log("error packet");
+            return;
+        }
+        if ($req['cmd'] == 'getInfo')
+        {
+            $this->centerSocket->send(serialize([
+                //心跳
+                'cmd' => 'putInfo',
+                //机器HOSTNAME
+                'name' => gethostname(),
+                'ip' => swoole_get_local_ip(),
+                'uname' => php_uname(),
+            ]));
+        }
     }
 
     function onTimer($id)
@@ -46,10 +64,6 @@ class Node extends Server
         $this->centerSocket->send(serialize([
             //心跳
             'cmd' => 'heartbeat',
-            //机器HOSTNAME
-            'name' => gethostname(),
-            'ip' => swoole_get_local_ip(),
-            'uname' => php_uname(),
         ]));
     }
 }

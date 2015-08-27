@@ -17,6 +17,8 @@ abstract class Server extends Base
 
     protected $max_file_size = 100000000; //100M
 
+    protected $logger;
+
     /**
      * 版本号
      */
@@ -379,6 +381,15 @@ abstract class Server extends Base
     {
         unset($this->files[$fd]);
         echo "upload client[$fd] closed.\n";
+    }
+
+    function log($msg)
+    {
+        if (!$this->logger)
+        {
+            $this->logger = new Swoole\Log\EchoLog(true);
+        }
+        $this->logger->info($msg);
     }
 
     function run()
