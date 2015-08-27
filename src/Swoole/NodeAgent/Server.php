@@ -12,6 +12,9 @@ class Server extends Base
     protected $files;
     protected $currentCommand;
 
+    /**
+     * @var \swoole_client
+     */
     protected $center_server;
     protected $max_file_size = 100000000; //100M
 
@@ -406,11 +409,33 @@ class Server extends Base
             echo "Swoole Upload Server running\n";
         });
 
+        $serv->on('WorkerStart', function (\swoole_server $serv, $worker_id)
+        {
+            //每1分钟向服务器上报
+            $serv->tick(60000, [$this, 'onTimer']);
+        });
+
+        //监听UDP端口，与Center服务器通信
+        $serv->listen('0.0.0.0', 9508, SWOOLE_SOCK_UDP);
+
         $this->allowPathList = rtrim($this->allowPathList, ' /');
         $serv->on('connect', array($this, 'onConnect'));
-        $serv->on('receive', array($this, 'onreceive'));
-        $serv->on('close', array($this, 'onclose'));
+        $serv->on('receive', array($this, 'onReceive'));
+        $serv->on('packet', array($this, 'onPacket'));
+        $serv->on('close', array($this, 'onClose'));
         $this->serv = $serv;
         $serv->start();
+    }
+
+    function onTimer($id)
+    {
+        $this->center_server->send(serialize([
+            //心跳
+            'cmd' => 'heartbeat',
+            //机器HOSTNAME
+            'name' => gethostname(),
+            'ip' => swoole_get_local_ip(),
+            'uname' => php_uname(),
+        ]));
     }
 }
