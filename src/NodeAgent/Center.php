@@ -1,5 +1,6 @@
 <?php
 namespace NodeAgent;
+use Swoole\String;
 
 /**
  * 中心服务器，中心服务器本身也是一个节点
@@ -25,20 +26,58 @@ class Center extends Server
      */
     protected $ipMap = array();
 
+    /**
+     * 当前版本
+     * @var string
+     */
+    protected $nodeCurrentVersion;
+
+    /**
+     * 当前的NodeAgent包
+     * array('version' => '1.0.1',
+     * 'url' => 'http://183.57.37.215:9000/node-agent-1.0.1.phar',
+     * 'hash' => '9d7fe2b25b4fa6412a4657d3cf181893',
+     * )
+     */
+    protected $nodeCurrentPackage;
+
     const KEY_NODE_LIST = 'node:list';
     const KEY_NODE_INFO = 'node:info';
+    const KEY_NODE_VERSION = 'node:version';
 
     function init()
     {
         $this->redis = \Swoole::$php->redis;
         $nodeList = $this->redis->sMembers(self::KEY_NODE_LIST);
+        $this->nodeCurrentVersion = json_decode($this->redis->get(self::KEY_NODE_VERSION), true);
         $this->nodes = array_flip($nodeList);
         //监听UDP端口，接受来自于节点的上报
         $this->serv->addlistener('0.0.0.0', self::PORT_UDP, SWOOLE_SOCK_UDP);
         $this->serv->on('packet', array($this, 'onPacket'));
         NodeInfo::$serv = $this->serv;
         NodeInfo::$center = $this;
+
+        $this->serv->on('WorkerStart', function (\swoole_server $serv, $worker_id)
+        {
+            //每1分钟向服务器上报
+            $serv->tick(60000, [$this, 'onTimer']);
+        });
+
         $this->log(__CLASS__.' is running.');
+    }
+
+    function onTimer()
+    {
+        $newVersion = $this->redis->get(self::KEY_NODE_VERSION);
+        if ($newVersion)
+        {
+            $ver = json_decode($newVersion, true);
+            //有最新的版本
+            if (String::versionCompare($ver['version'], $this->nodeCurrentVersion['version']) > 0)
+            {
+                $this->nodeCurrentVersion = $ver;
+            }
+        }
     }
 
     function onPacket($serv, $data, $addr)
@@ -91,7 +130,16 @@ class Center extends Server
         //信息过期了需要更新
         if ($nodeInfo->updateTime < $nodeInfo->hearbeatTime - $this->nodeInfoLifeTime)
         {
-            $nodeInfo->send(['cmd' => 'getInfo']);
+            //当前的NodeAgent版本更高，节点服务器需要更新了
+            if (String::versionCompare($this->nodeCurrentVersion, $nodeInfo->version) > 0)
+            {
+                $nodeInfo->send(['cmd' => 'upgrade', 'url' => $this->upgradeServerUrl . '/node-agent.' . $this->nodeCurrentVersion . '.phar']);
+            }
+            //更新节点信息
+            else
+            {
+                $nodeInfo->send(['cmd' => 'getInfo']);
+            }
         }
     }
 
@@ -106,6 +154,16 @@ class Center extends Server
         {
             $nodeInfo->setInfo($req['info']);
         }
+    }
+
+    protected function _cmd_getNodeList($fd, $req)
+    {
+
+    }
+
+    protected function _cmd_getNodeInfo($fd, $req)
+    {
+
     }
 }
 
@@ -149,6 +207,8 @@ class NodeInfo
     public $address;
     public $port;
 
+    public $version;
+
     /**
      * @param $info
      */
@@ -160,6 +220,7 @@ class NodeInfo
         $this->hostname = $info['hostname'];
         $this->uanme = $info['uanme'];
         $this->deviceInfo = $info['deviceInfo'];
+
         self::$center->redis->hMset(Center::KEY_NODE_INFO . ':' . $this->hostname, $info);
     }
 

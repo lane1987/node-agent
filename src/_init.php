@@ -3,7 +3,6 @@ define('WEBPATH', __DIR__);
 require_once __DIR__ . '/framework/libs/lib_config.php';
 
 $env = get_cfg_var('env.name');
-$env = "dev";
 if (empty($env))
 {
     $env = 'product';

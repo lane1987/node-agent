@@ -16,13 +16,7 @@ abstract class Server extends Base
     protected $currentCommand;
 
     protected $max_file_size = 100000000; //100M
-
     protected $logger;
-
-    /**
-     * 版本号
-     */
-    const VERSION = '1.0.1';
 
     /**
      * 限定上传文件的可以操作的目录

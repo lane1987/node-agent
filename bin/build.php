@@ -13,7 +13,9 @@ else
 
 if ($dst == 'node')
 {
-    $phar = new Phar(__DIR__ . '/node-agent.phar');
+    $pharFile = __DIR__ . '/node-agent.phar';
+    unlink($pharFile);
+    $phar = new Phar($pharFile);
     $phar->buildFromDirectory(WEBPATH, '/\.php$/');
     $phar->addFile(WEBPATH . '/encrypt.key', 'encrypt.key');
     $phar->compressFiles(\Phar::GZ);
@@ -22,7 +24,9 @@ if ($dst == 'node')
 }
 elseif ($dst == 'center')
 {
-    $phar = new Phar(__DIR__ . '/node-center.phar');
+    $pharFile = __DIR__ . '/node-center.phar';
+    unlink($pharFile);
+    $phar = new Phar($pharFile);
     $phar->buildFromDirectory(WEBPATH, '/\.php$/');
     $phar->addFile(WEBPATH . '/encrypt.key', 'encrypt.key');
     $phar->compressFiles(\Phar::GZ);
