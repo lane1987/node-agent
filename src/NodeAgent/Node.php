@@ -13,7 +13,7 @@ class Node extends Server
     /**
      * 版本号
      */
-    const VERSION = '1.0.2';
+    const VERSION = '1.0.4';
 
     /**
      * phar包的绝对路径
@@ -103,6 +103,10 @@ class Node extends Server
                     //退出进程，等待重新拉起
                     exit;
                 }
+            }
+            else
+            {
+                $this->log("upgrade failed. Cannot fetch url [{$req['url']}]");
             }
         }
     }

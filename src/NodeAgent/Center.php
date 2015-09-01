@@ -18,7 +18,7 @@ class Center extends Server
      * 600秒强制更新
      * @var int
      */
-    protected $nodeInfoLifeTime = 600;
+    protected $nodeInfoLifeTime = 60;
 
     /**
      * IP到NodeInfo的映射
@@ -76,6 +76,7 @@ class Center extends Server
             if (String::versionCompare($ver['version'], $this->nodeCurrentVersion['version']) > 0)
             {
                 $this->nodeCurrentVersion = $ver;
+                $this->log("found new node-agent version [{$ver['version']}]");
             }
         }
     }
