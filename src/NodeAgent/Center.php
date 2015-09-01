@@ -131,9 +131,14 @@ class Center extends Server
         if ($nodeInfo->updateTime < $nodeInfo->hearbeatTime - $this->nodeInfoLifeTime)
         {
             //当前的NodeAgent版本更高，节点服务器需要更新了
-            if (String::versionCompare($this->nodeCurrentVersion, $nodeInfo->version) > 0)
+            if (String::versionCompare($this->nodeCurrentVersion['version'], $nodeInfo->version) > 0)
             {
-                $nodeInfo->send(['cmd' => 'upgrade', 'url' => $this->upgradeServerUrl . '/node-agent.' . $this->nodeCurrentVersion . '.phar']);
+                $nodeInfo->send([
+                    'cmd' => 'upgrade',
+                    'url' => $this->nodeCurrentVersion['url'],
+                    'hash' => $this->nodeCurrentVersion['hash'],
+                    'version' => $this->nodeCurrentVersion['version'],
+                ]);
             }
             //更新节点信息
             else
@@ -221,7 +226,7 @@ class NodeInfo
         $this->uanme = $info['uanme'];
         $this->deviceInfo = $info['deviceInfo'];
 
-        self::$center->redis->hMset(Center::KEY_NODE_INFO . ':' . $this->hostname, $info);
+        self::$center->redis->set(Center::KEY_NODE_INFO . ':' . $this->hostname, json_encode($info));
     }
 
     /**

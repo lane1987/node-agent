@@ -13,7 +13,7 @@ class Node extends Server
     /**
      * 版本号
      */
-    const VERSION = '1.0.1';
+    const VERSION = '1.0.2';
 
     /**
      * phar包的绝对路径
@@ -36,7 +36,7 @@ class Node extends Server
             $serv->tick(60000, [$this, 'onTimer']);
             swoole_event_add($this->centerSocket->sock, [$this, 'onPacket']);
         });
-        $this->log(__CLASS__.' is running.');
+        $this->log(__CLASS__ . '-' . self::VERSION . ' is running.');
     }
 
     function setCenterSocket($ip, $port)
@@ -93,10 +93,15 @@ class Node extends Server
             if ($file)
             {
                 $hash = md5($file);
+                var_dump($hash, $req['hash']);
                 //hash对比一致，可以更新
                 if ($hash == $req['hash'])
                 {
-
+                    //更新phar包
+                    file_put_contents($this->pharFile, $file);
+                    $this->log("upgrade to ".$req['version']);
+                    //退出进程，等待重新拉起
+                    exit;
                 }
             }
         }
