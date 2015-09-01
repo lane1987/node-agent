@@ -193,7 +193,7 @@ class NodeInfo
      * IP列表
      */
     public $ipList;
-    public $uanme;
+    public $uname;
 
     /**
      * 心跳时间
@@ -224,7 +224,7 @@ class NodeInfo
 
         $this->ipList = $info['ipList'];
         $this->hostname = $info['hostname'];
-        $this->uanme = $info['uanme'];
+        $this->uname = $info['uname'];
         $this->deviceInfo = $info['deviceInfo'];
 
         self::$center->redis->set(Center::KEY_NODE_INFO . ':' . $this->hostname, json_encode($info));

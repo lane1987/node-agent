@@ -10,6 +10,13 @@ $svr->setScriptPath('/data/script');
 //设置允许上传的文件最大尺寸
 $svr->setMaxSize(100 * 1024 * 1024);
 $svr->setPharInfo(__DIR__);
-$svr->setCenterSocket('192.168.0.138', 9508);
+if (ENV_NAME == 'dev' or ENV_NAME == 'local')
+{
+    $svr->setCenterSocket('192.168.0.138', 9508);
+}
+else
+{
+    $svr->setCenterSocket('192.168.1.213', 9508);
+}
 $svr->run();
 
