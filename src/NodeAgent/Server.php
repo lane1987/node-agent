@@ -5,9 +5,6 @@ use Swoole;
 
 abstract class Server extends Base
 {
-    const PORT_UDP   = 9508;
-    const PORT_TCP   = 9507;
-
     /**
      * @var \swoole_server
      */
@@ -390,9 +387,9 @@ abstract class Server extends Base
         $this->logger->info($msg);
     }
 
-    function run()
+    function run($host = "0.0.0.0", $port = 9507)
     {
-        $serv = new \swoole_server("0.0.0.0", 9507, SWOOLE_BASE);
+        $serv = new \swoole_server($host, $port, SWOOLE_BASE);
         $this->serv = $serv;
 
         $runtime_config = array(

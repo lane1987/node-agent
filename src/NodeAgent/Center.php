@@ -8,6 +8,8 @@ use Swoole\String;
  */
 class Center extends Server
 {
+    const PORT_UDP = 9508;
+    const PORT_TCP = 9509;
     /**
      * @var \redis
      */

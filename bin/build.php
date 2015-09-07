@@ -1,7 +1,6 @@
 #!/usr/local/bin/php
 <?php
-define('WEBPATH', dirname(__DIR__) . '/src');
-require_once '/data/www/public/framework/libs/lib_config.php';
+require_once dirname(__DIR__) . '/src/_init.php';
 if (empty($argv[1]))
 {
     $dst = 'node';
@@ -33,8 +32,20 @@ elseif ($dst == 'center')
     $phar->stopBuffering();
     $phar->setStub($phar->createDefaultStub('center.php'));
 }
-elseif($dst == 'key')
+elseif ($dst == 'key')
 {
     $encrypt_key = md5(uniqid('encrypt'));
     echo $encrypt_key;
+}
+elseif ($dst == 'upload')
+{
+    $encrypt_key = file_get_contents(WEBPATH . '/encrypt.key');
+    $client = new NodeAgent\Client($encrypt_key);
+    if (!$client->connect('183.57.37.213', 9507, 10))
+    {
+        echo "Error: connect to server failed. " . swoole_strerror($client->errCode);
+        die("\n");
+    }
+    $r = $client->upload(__DIR__ . '/node-center.phar', '/data/node-agent/node-center.phar');
+    var_dump($r);
 }

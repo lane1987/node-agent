@@ -9,4 +9,4 @@ $svr->setRootPath(['/data']);
 $svr->setScriptPath('/data/script');
 //设置允许上传的文件最大尺寸
 $svr->setMaxSize(100 * 1024 * 1024);
-$svr->run();
+$svr->run("0.0.0.0", NodeAgent\Center::PORT_TCP);
