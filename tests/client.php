@@ -3,10 +3,8 @@
 /**
  * usage: php upload_client.php -h 127.0.0.1 -p 9507 -f test.jpg
  */
-require_once __DIR__ . '/NodeAgent/Base.php';
-require_once __DIR__ . '/NodeAgent/Client.php';
-
-$encrypt_key = file_get_contents(__DIR__.'/encrypt.key');
+require_once dirname(__DIR__) . '/src/_init.php';
+$encrypt_key = file_get_contents(dirname(__DIR__) . '/src/encrypt.key');
 $client = new NodeAgent\Client($encrypt_key);
 $args = getopt("p:h:f:t");
 
@@ -40,6 +38,10 @@ if (!$client->connect($args['h'], $args['p'], $args['t']))
     echo "Error: connect to server failed. " . swoole_strerror($client->errCode);
     die("\n");
 }
+
+$res = $client->request(['cmd' => 'getNodeList']);
+var_dump($res);
+exit;
 
 $remote_file = '/data/testnode/' . basename($file);
 $client->UploadCallback = function ($send_n, $total)

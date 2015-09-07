@@ -164,12 +164,13 @@ class Center extends Server
 
     protected function _cmd_getNodeList($fd, $req)
     {
-
-    }
-
-    protected function _cmd_getNodeInfo($fd, $req)
-    {
-
+        $nodeList = $this->redis->sMembers(self::KEY_NODE_LIST);
+        array_walk($nodeList, function (&$a)
+        {
+            $a = self::KEY_NODE_INFO . ':' . $a;
+        });
+        $nodeInfo = $this->redis->mget($nodeList);
+        $this->sendResult($fd, 0, '', $nodeInfo);
     }
 }
 

@@ -14,6 +14,7 @@ class Client extends Base
      */
     protected $sock;
     public $errCode;
+    public $errMsg;
 
     function connect($host, $port, $timeout = 30)
     {
@@ -104,7 +105,16 @@ class Client extends Base
             {
                 return false;
             }
-            return true;
+            if ($json['code'] == 0)
+            {
+                return true;
+            }
+            else
+            {
+                $this->errCode = $json['code'];
+                $this->errMsg = $json['msg'];
+                return false;
+            }
         }
         else
         {
@@ -161,7 +171,7 @@ class Client extends Base
      * @param bool $json 是否进行JSON串化
      * @return bool|mixed
      */
-    protected function request($data)
+    function request($data)
     {
         $pkg = $this->pack($data);
         $ret = $this->sock->send($pkg);

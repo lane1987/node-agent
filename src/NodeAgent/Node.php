@@ -132,7 +132,7 @@ class Node extends Server
         $data = file_get_contents('/proc/meminfo');
         preg_match('/MemTotal:\s+(\d+) kb/i', $data, $match1);
         preg_match('/MemAvailable:\s+(\d+) kb/i', $data, $match2);
-        return ['total' => $match1[1] / 1000 / 1000, 'model' => $match2[1] / 1000 / 1000];
+        return ['total' => $match1[1] / 1000 / 1000, 'free' => $match2[1] / 1000 / 1000];
     }
 
     /**

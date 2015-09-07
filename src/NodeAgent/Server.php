@@ -52,9 +52,14 @@ abstract class Server extends Base
      * @param $msg
      * @return bool
      */
-    protected function sendResult($fd, $code, $msg)
+    protected function sendResult($fd, $code, $msg, $data = null)
     {
-        $this->serv->send($fd, $this->pack(array('code' => $code, 'msg' => $msg)));
+        $array = array('code' => $code, 'msg' => $msg);
+        if ($data)
+        {
+            $array['data'] = $data;
+        }
+        $this->serv->send($fd, $this->pack($array));
         //打印日志
         if (is_string($msg) and strlen($msg) < 128)
         {
