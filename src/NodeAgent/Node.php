@@ -13,7 +13,7 @@ class Node extends Server
     /**
      * 版本号
      */
-    const VERSION = '1.0.4';
+    const VERSION = '1.0.5';
 
     /**
      * phar包的绝对路径
@@ -88,12 +88,11 @@ class Node extends Server
             {
                 $this->log("缺少URL和hash");
             }
-            $curl = new Swoole\Client\CURL;
-            $file = $curl->get($req['url']);
+
+            $file = self::downloadPackage($req['url']);
             if ($file)
             {
                 $hash = md5($file);
-                var_dump($hash, $req['hash']);
                 //hash对比一致，可以更新
                 if ($hash == $req['hash'])
                 {
@@ -132,7 +131,7 @@ class Node extends Server
         $data = file_get_contents('/proc/meminfo');
         preg_match('/MemTotal:\s+(\d+) kb/i', $data, $match1);
         preg_match('/MemAvailable:\s+(\d+) kb/i', $data, $match2);
-        return ['total' => $match1[1] / 1000 / 1000, 'free' => $match2[1] / 1000 / 1000];
+        return ['total' => $match1[1] / 1024 / 1024, 'free' => $match2[1] / 1024 / 1024];
     }
 
     /**
@@ -161,6 +160,13 @@ class Node extends Server
             $result['all']['avail'] = $avail;
         }
         return $result;
+    }
+
+    static function downloadPackage($url)
+    {
+        $curl = new Swoole\Client\CURL;
+        $curl->setCredentials('admin', 'aiQuee7e');
+        return $curl->get($url);
     }
 
     function onTimer($id)

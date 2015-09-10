@@ -20,6 +20,7 @@ if ($dst == 'node')
     $phar->compressFiles(\Phar::GZ);
     $phar->stopBuffering();
     $phar->setStub($phar->createDefaultStub('node.php'));
+    echo "node-agent.phar打包成功\n";
 }
 elseif ($dst == 'center')
 {
@@ -31,6 +32,7 @@ elseif ($dst == 'center')
     $phar->compressFiles(\Phar::GZ);
     $phar->stopBuffering();
     $phar->setStub($phar->createDefaultStub('center.php'));
+    echo "node-center.phar打包成功\n";
 }
 elseif ($dst == 'key')
 {
@@ -47,5 +49,23 @@ elseif ($dst == 'upload')
         die("\n");
     }
     $r = $client->upload(__DIR__ . '/node-center.phar', '/data/node-agent/node-center.phar');
-    var_dump($r);
+    if ($r)
+    {
+        echo "上传成功\n";
+    }
+}
+elseif ($dst == 'upload2')
+{
+    $encrypt_key = file_get_contents(WEBPATH . '/encrypt.key');
+    $client = new NodeAgent\Client($encrypt_key);
+    if (!$client->connect('183.57.37.213', 9507, 10))
+    {
+        echo "Error: connect to server failed. " . swoole_strerror($client->errCode);
+        die("\n");
+    }
+    $r = $client->upload(__DIR__ . '/node-agent.phar', '/data/node-agent/node-agent.phar');
+    if ($r)
+    {
+        echo "上传成功\n";
+    }
 }

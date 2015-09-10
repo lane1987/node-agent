@@ -74,12 +74,20 @@ class Center extends Server
         if ($newVersion)
         {
             $ver = json_decode($newVersion, true);
+            if (!$ver)
+            {
+                $this->log("json_decode failed. error Version Config: {$newVersion}");
+            }
             //有最新的版本
             if (String::versionCompare($ver['version'], $this->nodeCurrentVersion['version']) > 0)
             {
                 $this->nodeCurrentVersion = $ver;
                 $this->log("found new node-agent version [{$ver['version']}]");
             }
+        }
+        else
+        {
+            $this->log("redis->get(".self::KEY_NODE_VERSION.") failed.");
         }
     }
 
