@@ -112,7 +112,7 @@ class Center extends Server
                 $nodeInfo->address = $ipAddress;
                 $nodeInfo->port = $addr['port'];
                 $this->ipMap[$ipAddress] = $nodeInfo;
-                $this->log("new node, address=$ipAddress");
+                $this->log("new node, address=$ipAddress, version=".$nodeInfo->version);
                 $this->redis->sAdd(self::KEY_NODE_LIST, $nodeInfo->hostname);
             }
             else
@@ -141,21 +141,24 @@ class Center extends Server
         //信息过期了需要更新
         if ($nodeInfo->updateTime < $nodeInfo->hearbeatTime - $this->nodeInfoLifeTime)
         {
-            //当前的NodeAgent版本更高，节点服务器需要更新了
-            if (String::versionCompare($this->nodeCurrentVersion['version'], $nodeInfo->version) > 0)
-            {
-                $nodeInfo->send([
-                    'cmd' => 'upgrade',
-                    'url' => $this->nodeCurrentVersion['url'],
-                    'hash' => $this->nodeCurrentVersion['hash'],
-                    'version' => $this->nodeCurrentVersion['version'],
-                ]);
-            }
-            //更新节点信息
-            else
-            {
-                $nodeInfo->send(['cmd' => 'getInfo']);
-            }
+            $nodeInfo->send(['cmd' => 'getInfo']);
+            return;
+        }
+        //没有版本号
+        if (empty($nodeInfo->version))
+        {
+            $this->log($nodeInfo->address . " version is null");
+        }
+        //当前的NodeAgent版本更高，节点服务器需要更新了
+        elseif (String::versionCompare($this->nodeCurrentVersion['version'], $nodeInfo->version) > 0)
+        {
+            $nodeInfo->send([
+                'cmd' => 'upgrade',
+                'url' => $this->nodeCurrentVersion['url'],
+                'hash' => $this->nodeCurrentVersion['hash'],
+                'version' => $this->nodeCurrentVersion['version'],
+            ]);
+            $this->log($nodeInfo->address . " upgrade to {$this->nodeCurrentVersion['version']}");
         }
     }
 
@@ -237,6 +240,7 @@ class NodeInfo
         $this->hostname = $info['hostname'];
         $this->uname = $info['uname'];
         $this->deviceInfo = $info['deviceInfo'];
+        $this->version = $info['version'];
 
         self::$center->redis->set(Center::KEY_NODE_INFO . ':' . $this->hostname, json_encode($info));
     }
