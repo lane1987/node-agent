@@ -65,7 +65,6 @@ class Client extends Base
             $fp = fopen($local_file, 'r');
             if (!$fp)
             {
-                echo "Error: open $local_file failed.\n";
                 return false;
             }
 
@@ -80,7 +79,7 @@ class Client extends Base
                     $rs = $this->sock->send($this->pack($read, false));
                     if ($rs === false)
                     {
-                        echo "transmission failed. socket error code {$this->sock->errCode}\n";
+                        trigger_error("transmission failed. socket error code {$this->sock->errCode}");
                         return false;
                     }
                     //回调函数
@@ -90,11 +89,9 @@ class Client extends Base
                         call_user_func($this->UploadCallback, $send_n, $file_size);
                     }
                 }
-                else
-                {
-                    echo "Error: read $local_file failed.\n";
-                }
             }
+            fclose($fp);
+
             $ret = $this->sock->recv();
             if (!$ret)
             {
