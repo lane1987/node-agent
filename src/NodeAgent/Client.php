@@ -90,10 +90,10 @@ class Client extends Base
                         call_user_func($this->UploadCallback, $send_n, $file_size);
                     }
                 }
-                else
+/*                else
                 {
                     echo "Error: read $local_file failed.\n";
-                }
+                }*/
             }
             $ret = $this->sock->recv();
             if (!$ret)
