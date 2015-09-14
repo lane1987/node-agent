@@ -74,7 +74,7 @@ class Client extends Base
             while (!feof($fp))
             {
                 $read = fread($fp, 8192);
-                if ($read !== false)
+                if ($read)
                 {
                     //发送文件内容，JSON不需要串化
                     $rs = $this->sock->send($this->pack($read, false));

@@ -296,7 +296,7 @@ abstract class Server extends Base
             $info['recv'] += strlen($data);
             if ($info['recv'] >= $info['size'])
             {
-                $this->sendResult($fd, 0, "Success, transmission finish. Close connection.");
+                $this->sendResult($fd, 0, "Success, transmission finish.");
                 //关闭句柄
                 fclose($this->files[$fd]['fp']);
                 unset($this->files[$fd]);
