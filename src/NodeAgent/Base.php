@@ -1,7 +1,7 @@
 <?php
 namespace NodeAgent;
 
-require_once __DIR__ . '/DES.php';
+use Swoole;
 
 class Base
 {
@@ -20,7 +20,7 @@ class Base
         if (!empty($des_key))
         {
             $this->encrypt = true;
-            $this->des = new DES(substr($des_key, 0, 32));
+            $this->des = new Swoole\DES(substr($des_key, 0, 32));
             $this->des->setIV(hex2bin(substr($des_key, 32, 64)));
         }
     }

@@ -8,7 +8,7 @@ $svr = new NodeAgent\Node($encrypt_key);
 $svr->setRootPath(['/data']);
 $svr->setScriptPath('/data/script');
 //设置允许上传的文件最大尺寸
-$svr->setMaxSize(100 * 1024 * 1024);
+$svr->setMaxSize(1000 * 1024 * 1024);
 $svr->setPharInfo(__DIR__);
 
 if (ENV_NAME == 'dev' or ENV_NAME == 'local')
