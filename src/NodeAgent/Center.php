@@ -117,14 +117,14 @@ class Center extends Server
                 $this->log("new node, address=$ipAddress, version=" . $nodeInfo->version);
                 //存储hostname
                 $this->redis->sAdd(self::KEY_NODE_LIST, $nodeInfo->hostname);
-                //存储Socket用于强制升级
-                $this->redis->sAdd(self::KEY_NODE_SOCKET, json_encode($addr));
             }
             else
             {
                 $this->serv->sendto($addr['address'], $addr['port'], serialize([
                     'cmd' => 'getInfo',
                 ]));
+                //存储Socket用于强制升级
+                $this->redis->sAdd(self::KEY_NODE_SOCKET, json_encode($addr));
             }
         }
         else

@@ -39,7 +39,7 @@ elseif ($dst == 'key')
     $encrypt_key = md5(uniqid('encrypt'));
     echo $encrypt_key;
 }
-elseif ($dst == 'upload')
+elseif ($dst == 'upload_center')
 {
     $encrypt_key = file_get_contents(WEBPATH . '/encrypt.key');
     $client = new NodeAgent\Client($encrypt_key);
@@ -54,7 +54,7 @@ elseif ($dst == 'upload')
         echo "上传成功\n";
     }
 }
-elseif ($dst == 'upload2')
+elseif ($dst == 'upload_node')
 {
     $encrypt_key = file_get_contents(WEBPATH . '/encrypt.key');
     $client = new NodeAgent\Client($encrypt_key);
