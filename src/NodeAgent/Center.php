@@ -142,6 +142,7 @@ class Center extends Server
     {
         //更新心跳时间
         $nodeInfo->hearbeatTime = time();
+        $this->log("heartbeat, node=" . $nodeInfo->address . ", version=" . $nodeInfo->version);
         //信息过期了需要更新
         if ($nodeInfo->updateTime < $nodeInfo->hearbeatTime - $this->nodeInfoLifeTime)
         {
@@ -245,8 +246,8 @@ class NodeInfo
         $this->uname = $info['uname'];
         $this->deviceInfo = $info['deviceInfo'];
         $this->version = $info['version'];
-
         self::$center->redis->set(Center::KEY_NODE_INFO . ':' . $this->hostname, json_encode($info));
+        self::$center->log("setInfo, node=".$this->address.", version=".$this->version);
     }
 
     /**
