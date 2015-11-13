@@ -52,7 +52,6 @@ class Center extends Server
     {
         $this->redis = \Swoole::$php->redis;
         $nodeList = $this->redis->sMembers(self::KEY_NODE_LIST);
-        $this->redis->delete(self::KEY_NODE_SOCKET);
         $this->nodeCurrentVersion = json_decode($this->redis->get(self::KEY_NODE_VERSION), true);
         $this->nodes = array_flip($nodeList);
         //监听UDP端口，接受来自于节点的上报
