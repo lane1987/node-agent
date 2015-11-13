@@ -177,6 +177,7 @@ class Center extends Server
         if (!empty($req['info']))
         {
             $nodeInfo->setInfo($req['info']);
+            $this->log("putInfo, address=" . $nodeInfo->address . ", version=" . $nodeInfo->version);
         }
     }
 
@@ -247,7 +248,6 @@ class NodeInfo
         $this->deviceInfo = $info['deviceInfo'];
         $this->version = $info['version'];
         self::$center->redis->set(Center::KEY_NODE_INFO . ':' . $this->hostname, json_encode($info));
-        self::$center->log("setInfo, node=".$this->address.", version=".$this->version);
     }
 
     /**
