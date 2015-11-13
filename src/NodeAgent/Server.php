@@ -262,10 +262,14 @@ abstract class Server extends Base
         $fp = fopen($file, 'w');
         if (!$fp)
         {
-            return $this->sendResult($fd, 504, "can open file[{$file}].");
+            return $this->sendResult($fd, 504, "cannot open file[{$file}].");
         }
         else
         {
+            if (!flock($fp, LOCK_EX))
+            {
+                return $this->sendResult($fd, 505, "cannot lock file[{$file}].");
+            }
             $this->sendResult($fd, 0, 'transmission start');
             $this->files[$fd] = array('fp' => $fp, 'file' => $file, 'size' => $req['size'], 'recv' => 0);
         }
@@ -287,8 +291,10 @@ abstract class Server extends Base
         if (!fwrite($fp, $data))
         {
             $this->sendResult($fd, 600, "fwrite failed. transmission stop.");
+            //解锁
+            flock($fp, LOCK_UN);
             //关闭文件句柄
-            fclose($this->files[$fd]['fp']);
+            fclose($fp);
             unlink($file);
         }
         else
@@ -297,8 +303,10 @@ abstract class Server extends Base
             if ($info['recv'] >= $info['size'])
             {
                 $this->sendResult($fd, 0, "Success, transmission finish.");
+                //解锁
+                flock($fp, LOCK_UN);
                 //关闭句柄
-                fclose($this->files[$fd]['fp']);
+                fclose($fp);
                 unset($this->files[$fd]);
             }
         }
