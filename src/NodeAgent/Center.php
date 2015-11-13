@@ -43,6 +43,7 @@ class Center extends Server
      */
     protected $nodeCurrentPackage;
 
+    const KEY_NODE_SOCKET = 'node:socket';
     const KEY_NODE_LIST = 'node:list';
     const KEY_NODE_INFO = 'node:info';
     const KEY_NODE_VERSION = 'node:version';
@@ -51,6 +52,7 @@ class Center extends Server
     {
         $this->redis = \Swoole::$php->redis;
         $nodeList = $this->redis->sMembers(self::KEY_NODE_LIST);
+        $this->redis->delete(self::KEY_NODE_SOCKET);
         $this->nodeCurrentVersion = json_decode($this->redis->get(self::KEY_NODE_VERSION), true);
         $this->nodes = array_flip($nodeList);
         //监听UDP端口，接受来自于节点的上报
@@ -112,8 +114,11 @@ class Center extends Server
                 $nodeInfo->address = $ipAddress;
                 $nodeInfo->port = $addr['port'];
                 $this->ipMap[$ipAddress] = $nodeInfo;
-                $this->log("new node, address=$ipAddress, version=".$nodeInfo->version);
+                $this->log("new node, address=$ipAddress, version=" . $nodeInfo->version);
+                //存储hostname
                 $this->redis->sAdd(self::KEY_NODE_LIST, $nodeInfo->hostname);
+                //存储Socket用于强制升级
+                $this->redis->sAdd(self::KEY_NODE_SOCKET, json_encode($addr));
             }
             else
             {
