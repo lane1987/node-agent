@@ -123,7 +123,7 @@ class Center extends Server
                     'cmd' => 'getInfo',
                 ]));
                 //存储Socket用于强制升级
-                $this->redis->sAdd(self::KEY_NODE_SOCKET, $addr['address'] . ':' . $addr['port']);
+                $this->redis->hSet(self::KEY_NODE_SOCKET, $addr['address'], $addr['port']);
             }
         }
         else
