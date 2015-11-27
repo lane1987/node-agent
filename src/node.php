@@ -3,6 +3,10 @@ require_once __DIR__ . '/_init.php';
 
 //是一个96字节的文件
 $encrypt_key = file_get_contents(__DIR__ . '/encrypt.key');
+if (empty($encrypt_key))
+{
+    throw new Exception("encrypt.key file not exist.");
+}
 $svr = new NodeAgent\Node($encrypt_key);
 //设置上传文件的存储目录
 $svr->setRootPath(['/data']);
