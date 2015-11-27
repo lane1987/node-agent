@@ -39,9 +39,9 @@ if (!$client->connect($args['h'], $args['p'], $args['t']))
     die("\n");
 }
 
-$res = $client->request(['cmd' => 'getNodeList']);
-var_dump($res);
-exit;
+//$res = $client->request(['cmd' => 'getNodeList']);
+//var_dump($res);
+//exit;
 
 $remote_file = '/data/testnode/' . basename($file);
 $client->UploadCallback = function ($send_n, $total)
@@ -53,7 +53,5 @@ if (!$client->upload($file, $remote_file))
     die("upload success.\n");
 }
 
-
-var_dump($client->execute('test.sh'), $client->errCode);
-
+//var_dump($client->execute('test.sh'), $client->errCode);
 //var_dump($client->delete(['/tmp/test1.txt', '/tmp/test2.txt']));

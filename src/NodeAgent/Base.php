@@ -7,7 +7,7 @@ class Base
 {
     protected $encrypt = false;
     /**
-     * @var DES
+     * @var Swoole\DES
      */
     protected $des;
 
@@ -31,7 +31,7 @@ class Base
      * @param bool $encode_json
      * @return string
      */
-    protected function pack($data, $encode_json = true)
+    function pack($data, $encode_json = true)
     {
         //json编码
         if ($encode_json)
@@ -61,7 +61,7 @@ class Base
      * @param bool $decode_json
      * @return bool|mixed|string
      */
-    protected function unpack($data, $decode_json = true)
+    function unpack($data, $decode_json = true)
     {
         $_data = substr($data, 4);
         if ($this->encrypt)
