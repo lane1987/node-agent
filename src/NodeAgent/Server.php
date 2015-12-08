@@ -98,8 +98,42 @@ abstract class Server extends Base
             $this->sendResult($fd, 403, 'Permission denied.');
             return;
         }
-        $args = empty($req['args']) ? '' : implode(' ', $req['args']);
-        $this->sendResult($fd, 0, shell_exec($script_file . ' ' . $args));
+        //必须为数组
+        $args = empty($req['args']) ? [] : implode(' ', $req['args']);
+        $this->sendResult($fd, 0, $this->shellExec($script_file, $args));
+    }
+
+    protected $process;
+
+    function shellExec($script_file, $args)
+    {
+        if (!$this->process)
+        {
+            $this->process = new \swoole_process([$this, 'childProcess'], true, true);
+        }
+        $this->process->args = ['script_file' => $script_file, 'argv' => $args];
+        $this->process->start();
+        $output = '';
+        while(true)
+        {
+            $read = $this->process->read();
+            if ($read)
+            {
+                $output .= $read;
+            }
+            //回收子进程
+            else
+            {
+                \swoole_process::wait();
+                break;
+            }
+        }
+        return $output;
+    }
+
+    function childProcess(\swoole_process $process)
+    {
+        $process->exec($process->args['script_file'], $process->args['argv']);
     }
 
     /**
@@ -397,6 +431,10 @@ abstract class Server extends Base
 
     function run($host = "0.0.0.0", $port = 9507)
     {
+        swoole_async_set([
+            //关闭signalfd
+            'enable_signalfd' => false,
+        ]);
         $serv = new \swoole_server($host, $port, SWOOLE_BASE);
         $this->serv = $serv;
 
