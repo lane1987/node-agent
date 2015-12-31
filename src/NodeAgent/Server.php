@@ -98,9 +98,19 @@ abstract class Server extends Base
             $this->sendResult($fd, 403, 'Permission denied.');
             return;
         }
-        //必须为数组
-        $args = empty($req['args']) ? [] : implode(' ', $req['args']);
-        $this->sendResult($fd, 0, $this->shellExec($script_file, $args));
+        if (true)
+        {
+            $execResult = shell_exec($script_file . ' ' . implode(' ', $req['args']));
+        }
+        else
+        {
+            if (!isset($req['args']) or !is_array($req['args']))
+            {
+                $req['args'] = [];
+            }
+            $execResult = $this->shellExec($script_file, $req['args']);
+        }
+        $this->sendResult($fd, 0, $execResult);
     }
 
     protected $process;

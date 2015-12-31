@@ -1,5 +1,4 @@
 /.idea/
 /src/encrypt.key
 /src/framework
-/bin/node-agent.phar
-/bin/node-center.phar
+/bin/*.phar
