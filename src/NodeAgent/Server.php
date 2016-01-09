@@ -11,8 +11,10 @@ abstract class Server extends Base
     protected $serv;
     protected $files;
     protected $currentCommand;
-
-    protected $max_file_size = 100000000; //100M
+    //最大允许上传100M
+    protected $max_file_size = 100 * 1024 * 1024;
+    //小文件使用全内存
+    protected $memory_file_size = 256 * 1024;
     protected $logger;
 
     /**
@@ -26,6 +28,9 @@ abstract class Server extends Base
      * @var string
      */
     protected $script_path = '/data/script';
+
+    protected $locks = array();
+    protected $buffers = array();
 
     /**
      * @param string $script_path
@@ -289,6 +294,10 @@ abstract class Server extends Base
         }
 
         $file = $req['file'];
+        if ($this->locks[$file])
+        {
+            return $this->sendResult($fd, 508, '其他任务锁定了此文件，稍后重试.');
+        }
         if ($this->isAccess($file) === false)
         {
             return $this->sendResult($fd, 502, "file path[{$file}] error. Access deny.");
@@ -310,14 +319,70 @@ abstract class Server extends Base
         }
         else
         {
-            if (!flock($fp, LOCK_EX))
+            $task = array('fp' => $fp, 'file' => $file, 'size' => $req['size'], 'recv' => 0);
+            //小文件直接使用全内存缓存
+            if ($req['size'] <= $this->memory_file_size)
             {
-                return $this->sendResult($fd, 505, "cannot lock file[{$file}].");
+                $this->buffers[$file] = '';
+            }
+            //大文件进行加锁
+            else
+            {
+                if (!flock($fp, LOCK_EX))
+                {
+                    return $this->sendResult($fd, 505, "cannot lock file[{$file}].");
+                }
+                $this->locks[$file] = true;
             }
             $this->sendResult($fd, 0, 'transmission start');
-            $this->files[$fd] = array('fp' => $fp, 'file' => $file, 'size' => $req['size'], 'recv' => 0);
+            $this->files[$fd] = $task;
         }
         return true;
+    }
+
+    /**
+     * 传输文件结束
+     */
+    protected function transportEnd($fd, $info)
+    {
+        $fp = $info['fp'];
+        $file = $info['file'];
+
+        //缓存写入文件
+        if (isset($this->buffers[$file]))
+        {
+            $ret = file_put_contents($file, $this->buffers[$file], LOCK_EX);
+            unset($this->files[$fd]);
+            unset($this->buffers[$file]);
+            if ($ret)
+            {
+                $this->sendResult($fd, 0, "Success, transmission finish.");
+            }
+            else
+            {
+                $this->sendResult($fd, 600, "Fail, file_put_contents failed.");
+            }
+        }
+        else
+        {
+            //解锁
+            flock($fp, LOCK_UN);
+            //关闭句柄
+            fclose($fp);
+            unset($this->files[$fd]);
+            unset($this->locks[$file]);
+            $this->sendResult($fd, 0, "Success, transmission finish.");
+        }
+
+        //上传到脚本目录，自动增加执行权限
+        if ((new Swoole\String($file))->startWith($this->script_path))
+        {
+            chmod($file, 0700);
+        }
+        else
+        {
+            chmod($file, 0666);
+        }
     }
 
     /**
@@ -332,36 +397,37 @@ abstract class Server extends Base
         $info = &$this->files[$fd];
         $fp = $info['fp'];
         $file = $info['file'];
-        if (!fwrite($fp, $data))
+
+        //小文件不加锁
+        if (isset($this->buffers[$file]))
         {
-            $this->sendResult($fd, 600, "fwrite failed. transmission stop.");
-            //解锁
-            flock($fp, LOCK_UN);
-            //关闭文件句柄
-            fclose($fp);
-            unlink($file);
-        }
-        else
-        {
+            $this->buffers[$file] .= $data;
             $info['recv'] += strlen($data);
             if ($info['recv'] >= $info['size'])
             {
-                $this->sendResult($fd, 0, "Success, transmission finish.");
-                //解锁
-                flock($fp, LOCK_UN);
-                //关闭句柄
-                fclose($fp);
-                unset($this->files[$fd]);
+                $this->transportEnd($fd, $info);
             }
         }
-        //上传到脚本目录，自动增加执行权限
-        if ((new Swoole\String($file))->startWith($this->script_path))
-        {
-            chmod($file, 0700);
-        }
+        //大文件加锁分段写入
         else
         {
-            chmod($file, 0666);
+            if (!fwrite($fp, $data))
+            {
+                $this->sendResult($fd, 600, "fwrite failed. transmission stop.");
+                //解锁
+                flock($fp, LOCK_UN);
+                //关闭文件句柄
+                fclose($fp);
+                unlink($file);
+            }
+            else
+            {
+                $info['recv'] += strlen($data);
+                if ($info['recv'] >= $info['size'])
+                {
+                    $this->transportEnd($fd, $info);
+                }
+            }
         }
     }
 
